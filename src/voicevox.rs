@@ -1,40 +1,46 @@
-use reqwest::Client;
+use reqwest::{
+    Client,
+    header
+};
 use crate::ApplicationError;
 
-pub async fn version() -> Result<String, ApplicationError> {
-    let res = Client::new()
-        .get("http://localhost:50021/version")
-        .send()
-        .await?;
-
-    Ok(res.text().await?)
+pub struct VoicevoxClient {
+    client: Client,
+    base_url: String
 }
 
+impl VoicevoxClient {
 
-pub async fn synthesis(content: impl Into<String>, speaker: u8) -> Result<(), ApplicationError> {
+    pub fn new(base_url: impl Into<String>) -> Self {
+        Self { 
+            client: Client::new(), 
+            base_url: base_url.into()
+        }
+    }
 
-    let url = "http://localhost:50021/".to_string();
+    pub async fn synthesis(&self, content: impl Into<String>, speaker: u8) -> Result<(), ApplicationError> {
 
-    let query = Client::new()
-        .post(url.clone() + "audio_query")
-        .header(reqwest::header::ACCEPT, "application/json")
-        .query(&[("text", &content.into()), ("speaker", &speaker.to_string())])
-        .send()
-        .await?
-        .text()
-        .await?;
-
-    let res = Client::new()
-        .post(url.clone() + "synthesis")
-        .header(reqwest::header::CONTENT_TYPE, "application/json")
-        .query(&[("speaker", &speaker.to_string())])
-        .body(query)
-        .send()
-        .await?
-        .bytes()
-        .await?;
-
+        let query = self.client
+            .post(self.base_url.clone() + "audio_query")
+            .header(header::ACCEPT, "application/json")
+            .query(&[("speaker", &speaker.to_string()), ("text", &content.into())])
+            .send()
+            .await?
+            .text()
+            .await?;
     
-    std::fs::write("out.wav", res)?;
-    Ok(())
+        let res = self.client
+            .post(self.base_url.clone() + "synthesis")
+            .header(header::CONTENT_TYPE, "application/json")
+            .query(&[("speaker", &speaker.to_string())])
+            .body(query)
+            .send()
+            .await?
+            .bytes()
+            .await?;
+    
+        
+        std::fs::write("out.wav", res)?;
+        Ok(())
+    }
 }

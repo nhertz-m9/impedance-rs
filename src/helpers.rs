@@ -6,8 +6,7 @@ use songbird::{
         cached::Compressed
     }
 };
-
-use crate::voicevox;
+use crate::application_state::ApplicationState;
 
 pub type ApplicationError = Box<dyn std::error::Error + Send + Sync>;
 pub type Context<'a> = poise::Context<'a, (), ApplicationError>;
@@ -20,7 +19,7 @@ pub async fn reply_ephemeral(
     poise::send_reply(ctx, |builder| {
         builder
             .ephemeral(true)
-            .content(content.into())
+            .content(content)
     }).await
 }
 
@@ -37,8 +36,10 @@ pub async fn speak(
 
     if let Some(handler) = manager.get(message.guild_id.unwrap()) {
         if handler.lock().await.current_channel().unwrap().0 == message.channel_id.0 {
+            let data  = &ctx.data.read().await;
+            let state = data.get::<ApplicationState>().unwrap().clone();
 
-            voicevox::synthesis(message.content.clone(), 8).await?;
+            state.voicevox.synthesis(message.content.clone(), 8).await?;
             let src = Compressed::new(
                 ffmpeg("out.wav").await?,
                 BitsPerSecond(128_000)
