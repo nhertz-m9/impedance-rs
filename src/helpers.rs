@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use poise::ReplyHandle;
 use songbird::{
     driver::Bitrate::BitsPerSecond,
@@ -36,10 +38,13 @@ pub async fn speak(
 
     if let Some(handler) = manager.get(message.guild_id.unwrap()) {
         if handler.lock().await.current_channel().unwrap().0 == message.channel_id.0 {
-            let data  = &ctx.data.read().await;
-            let state = data.get::<ApplicationState>().unwrap().clone();
+            let data_clone = Arc::clone(&ctx.data);
+            let data_read  = data_clone.read().await
+                .get::<ApplicationState>()
+                .unwrap()
+                .clone();
 
-            state.voicevox.synthesis(message.content.clone(), 8).await?;
+            data_read.voicevox.synthesis(message.content.clone(), 8).await?;
             let src = Compressed::new(
                 ffmpeg("out.wav").await?,
                 BitsPerSecond(128_000)

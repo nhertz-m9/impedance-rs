@@ -4,16 +4,20 @@ mod voicevox;
 mod debug;
 mod event_handler;
 mod application_state;
+mod voice_state;
 
 use std::{
     env, 
     collections::HashSet
 };
-use poise::serenity_prelude::{
-    GatewayIntents, 
-    GuildId, 
-    UserId,
-    Colour
+use poise::{
+    builtins::register_in_guild,
+    serenity_prelude::{
+        GatewayIntents, 
+        GuildId, 
+        UserId,
+        Colour
+    }
 };
 use songbird::SerenityInit;
 use commands::{
@@ -23,6 +27,11 @@ use commands::{
 use debug::debug;
 use helpers::ApplicationError;
 use event_handler::event_handler;
+use voicevox::VoicevoxClient;
+use application_state::{
+    ApplicationState,
+    init_application_state
+};
 
 pub const APPLICATION_COLOUR: Colour = Colour(3908956);
 
@@ -37,7 +46,7 @@ async fn main() {
                 user_id.parse().unwrap()
             ])
         }
-        Err(_) => HashSet::new()
+        _ => HashSet::new()
     };
 
     let intents = GatewayIntents::non_privileged() 
@@ -59,17 +68,17 @@ async fn main() {
             },
             ..Default::default()
         })  
-        .setup(move |ctx, _, framework| {
+        .setup(|ctx, _, framework| {
             Box::pin(async move {
                 let guild_id = env::var("GUILD")
                     .expect("GUILD should be set.").parse::<GuildId>()?;
                 
-                poise::builtins::register_in_guild(&ctx.http, &framework.options().commands, guild_id).await?;
+                register_in_guild(&ctx.http, &framework.options().commands, guild_id).await?;
 
-                let state = application_state::ApplicationState {
-                    voicevox: voicevox::VoicevoxClient::new("http://localhost:50021/")
+                let state = ApplicationState {
+                    voicevox: VoicevoxClient::new("http://localhost:50021/")
                 };
-                application_state::init(ctx, state).await;
+                init_application_state(ctx, state).await;
                 Ok(())
             })
         })
@@ -77,7 +86,6 @@ async fn main() {
         .client_settings(|client| {
             client.register_songbird()
         });
-   
    
     framework
         .run()
