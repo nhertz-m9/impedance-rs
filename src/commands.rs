@@ -2,16 +2,17 @@ use std::sync::Arc;
 use chrono::Local;
 use poise::serenity_prelude::Mention;
 use crate::{
-    APPLICATION_COLOUR,
     helpers::{
         Context,
         ApplicationError,
-        reply_ephemeral
-    }
+        reply_ephemeral, 
+        get_songbird
+    }, 
+    constants::APPLICATION_COLOUR
 };
 
 
-#[poise::command(slash_command)]
+#[poise::command(slash_command, guild_only)]
 pub async fn connect(ctx: Context<'_>) -> Result<(), ApplicationError> {
     let guild = ctx.guild().unwrap();
 
@@ -29,7 +30,7 @@ pub async fn connect(ctx: Context<'_>) -> Result<(), ApplicationError> {
         return Ok(());
     }
 
-    let manager = Arc::clone(&songbird::get(ctx.serenity_context()).await.unwrap());
+    let manager = Arc::clone(&get_songbird(ctx.serenity_context()).await.unwrap());
     let _ = manager.join(guild.id, connect_to).await;
 
     poise::send_reply(ctx, |builder| {
@@ -46,7 +47,7 @@ pub async fn connect(ctx: Context<'_>) -> Result<(), ApplicationError> {
 }
 
 
-#[poise::command(slash_command)]
+#[poise::command(slash_command, guild_only)]
 pub async fn disconnect(ctx: Context<'_>) -> Result<(), ApplicationError> {
     let guild = ctx.guild().unwrap();
 
@@ -64,7 +65,7 @@ pub async fn disconnect(ctx: Context<'_>) -> Result<(), ApplicationError> {
         return Ok(());
     }
 
-    let manager = Arc::clone(&songbird::get(ctx.serenity_context()).await.unwrap());
+    let manager = Arc::clone(&get_songbird(ctx.serenity_context()).await.unwrap());
     if let Some(_) = manager.get(guild.id) {
         manager.remove(guild.id).await?;
 
@@ -80,5 +81,19 @@ pub async fn disconnect(ctx: Context<'_>) -> Result<(), ApplicationError> {
     } else {
         reply_ephemeral(ctx, "Not in a voice channel.").await?;
     }
+    Ok(())
+}
+
+
+#[poise::command(slash_command, guild_only)]
+pub async fn ignore(ctx: Context<'_>) -> Result<(), ApplicationError> {
+    let sender = ctx.author().id;
+
+    let mut data_lock = ctx.data().voicevox.lock().await;
+    let _ = data_lock.ignored_users.insert(sender.clone()) || data_lock.ignored_users.remove(&sender);
+    
+    reply_ephemeral(ctx, format!(
+        "Set ignored to {}.", data_lock.ignored_users.contains(&sender)
+    )).await?;
     Ok(())
 }

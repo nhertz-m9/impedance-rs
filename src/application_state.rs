@@ -1,22 +1,18 @@
 use std::sync::Arc;
-use poise::serenity_prelude::{
-    TypeMapKey, 
-    Context
-};
+use tokio::sync::Mutex;
+
+use crate::voicevox::VoicevoxClient;
 
 pub struct ApplicationState {
-    pub voicevox: crate::voicevox::VoicevoxClient
+    pub voicevox: Arc<Mutex<crate::voicevox::VoicevoxClient>>
 }
 
-impl TypeMapKey for ApplicationState {
-    type Value = Arc<ApplicationState>;
-}
-
-pub async fn init_application_state(ctx: &Context, state: ApplicationState) {
-    let data = Arc::clone(&ctx.data);
-    let mut data_write = data.write().await;
-
-    data_write.insert::<ApplicationState>(Arc::new(
-        state
-    ));
+impl ApplicationState {
+    pub fn new() -> Self {
+        Self {
+            voicevox: Arc::new(Mutex::new(
+                VoicevoxClient::new("http://localhost:50021/")
+            ))
+        }
+    }
 }

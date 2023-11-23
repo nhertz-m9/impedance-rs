@@ -6,27 +6,29 @@ use poise::{
 };
 use crate::{
     ApplicationError, 
-    helpers::speak,
-    voice_state::get_vc_users
+    helpers::get_songbird,
+    voice_state::get_vc_users, 
+    application_state::ApplicationState, 
+    speak::speak
 };
 
 pub async fn event_handler(
     ctx: &poise::serenity_prelude::Context,
     event: &Event<'_>,
-    _framework: poise::FrameworkContext<'_, (), ApplicationError>
+    data: &ApplicationState
 ) -> Result<(), ApplicationError> {
     match event {
 
         Event::Ready { data_about_bot } => {
             let user = &data_about_bot.user;
-            println!("{} is all set.", user.tag());
+            println!("{} is all set", user.tag());
 
             ctx.set_activity(Activity::listening("/connect")).await;
         }
 
         Event::Message { new_message } => {
-            speak(ctx, new_message)
-                .await.unwrap_or_else(|_| println!("unable to connect to voicevox."));
+            speak(ctx, new_message, data)
+                .await.unwrap_or_else(|_| println!("unable to connect to voicevox"));
         }
 
         Event::VoiceStateUpdate { old, new } => {
@@ -36,7 +38,7 @@ pub async fn event_handler(
                 let channel = old.clone().unwrap().channel_id.unwrap();
                
                 if get_vc_users(ctx, guild, channel)?.len() == 1 {
-                    let manager = Arc::clone(&songbird::get(ctx).await.unwrap());
+                    let manager = Arc::clone(&get_songbird(ctx).await.unwrap());
                     manager.remove(guild).await?;
                 }
             }

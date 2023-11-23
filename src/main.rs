@@ -5,6 +5,8 @@ mod debug;
 mod event_handler;
 mod application_state;
 mod voice_state;
+mod speak;
+mod constants;
 
 use std::{
     env, 
@@ -15,25 +17,19 @@ use poise::{
     serenity_prelude::{
         GatewayIntents, 
         GuildId, 
-        UserId,
-        Colour
+        UserId
     }
 };
 use songbird::SerenityInit;
 use commands::{
     connect,
-    disconnect
+    disconnect,
+    ignore
 };
 use debug::debug;
 use helpers::ApplicationError;
 use event_handler::event_handler;
-use voicevox::VoicevoxClient;
-use application_state::{
-    ApplicationState,
-    init_application_state
-};
-
-pub const APPLICATION_COLOUR: Colour = Colour(3908956);
+use application_state::ApplicationState;
 
 
 #[tokio::main]
@@ -61,10 +57,11 @@ async fn main() {
             commands: vec![
                 debug(),
                 connect(),
-                disconnect()
+                disconnect(),
+                ignore()
             ],
-            event_handler: |ctx, event, framework, _| {
-                Box::pin(event_handler(ctx, event, framework))
+            event_handler: |ctx, event, _, data| {
+                Box::pin(event_handler(ctx, event, data))
             },
             ..Default::default()
         })  
@@ -72,14 +69,9 @@ async fn main() {
             Box::pin(async move {
                 let guild_id = env::var("GUILD")
                     .expect("GUILD should be set.").parse::<GuildId>()?;
-                
                 register_in_guild(&ctx.http, &framework.options().commands, guild_id).await?;
 
-                let state = ApplicationState {
-                    voicevox: VoicevoxClient::new("http://localhost:50021/")
-                };
-                init_application_state(ctx, state).await;
-                Ok(())
+                Ok(ApplicationState::new())
             })
         })
         .intents(intents)
