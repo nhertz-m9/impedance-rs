@@ -4,7 +4,7 @@ use tokio::sync::Mutex;
 use crate::voicevox::VoicevoxClient;
 
 pub struct ApplicationState {
-    pub voicevox: Arc<Mutex<crate::voicevox::VoicevoxClient>>
+    pub voicevox: Arc<Mutex<VoicevoxClient>>
 }
 
 impl ApplicationState {
